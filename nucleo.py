@@ -1,11 +1,11 @@
 """
-nucleo.py
+nucleo.py | Arthur Lincoln (Pessoa 1)
 AVISO:
 REQUER PYTHON 3.10+ (match case)
 
 
 Motor do simulador, tem normalização, truncamento,
-arredodamento e as quatro operações básicas
+arredondamento e as quatro operações básicas
 
 Regras (Do md):
 -Todo numero é Decimal (criar com texto: Decimal("0.1"))
@@ -29,6 +29,14 @@ getcontext().prec = PRECISAO_MAXIMA
 #tuplas pra manter a ordem ao mostrar no menu
 OPERACOES_VALIDAS = ("+", "-", "*", "/")
 METODOS_VALIDOS = ("truncamento", "arredondamento")
+
+#Como interpretar o n em truncar() e arredondar():
+#"significativos" -> n digitos significativos (como diz o texto do enunciado), eh o padrao
+#"casas" -> n casas decimais (como mostram os passos do Exemplo 3)
+#IMPORTANTE:
+#Pra mudar de fora: nucleo.MODO_PRECISAO = "casas" / "significativos"
+MODOS_PRECISAO_VALIDOS = ("significativos", "casas")
+MODO_PRECISAO = "significativos"
 
 
 def normalizar(valor):
@@ -58,29 +66,50 @@ def normalizar(valor):
 def _reduzir(valor, n, modo):
     """
     Func auxiliar (o "_" avisa que é de uso interno):
-    mantem n digitos significativos usando o modo de arredondamento
+    mantem n digitos significativos ou casas decimais dependendo do MODO_PRECISAO usando o modo de arredondamento
     recebido
     truncar() e arredondar() só mudam o modo
     """
     if valor ==0:
         return Decimal("0")
 
-    #O expoente diz onde esta a virgula em relação aos dígitos
-    _, expoente = normalizar(valor)
+    #passo = valor da ultima casa que fica
+    if MODO_PRECISAO == "casas":
+        #n casas decimais: passo = 10^-n, independe do tamanho do numero
+        #Ex: 1.13572 n=4 -> passo = 10^-4 = 0.0001 -> 1.1357
+        passo = Decimal(1).scaleb(-n)
+    elif MODO_PRECISAO == "significativos":
+        #O expoente diz onde esta a virgula em relação aos dígitos
+        _, expoente = normalizar(valor)
 
-    #passo = valor da ultima casa que fica = 10^(expoente - n)
-    #Ex: 123.45 n=4 -> expoente=3 -> passo = 10^(3-4) = 10^-1 = 0.1
-    #Ex: 0.012345 n=4 -> expoente=-1 -> passo = 10^(-1-4) = 10^-5 = 0.00001
-    passo = Decimal(1).scaleb(expoente - n)
+        #n digitos significativos: passo = 10^(expoente - n)
+        #Ex: 123.45 n=4 -> expoente=3 -> passo = 10^(3-4) = 10^-1 = 0.1
+        #Ex: 0.012345 n=4 -> expoente=-1 -> passo = 10^(-1-4) = 10^-5 = 0.00001
+        #Ex: 1.13572 n=4 -> expoente=1 -> passo = 10^-3 -> 1.135
+        passo = Decimal(1).scaleb(expoente - n)
+    else:
+        raise ValueError(f"Modo de precisão inválido: {MODO_PRECISAO!r}. "
+                         f"Use 'significativos' ou 'casas'.")
 
     #quantize força o num  ter exatamente a precisão do passo
     #cortando ou arredondando conforme o modo
     return  valor.quantize(passo, rounding=modo)
 
-def truncar(valor, n): #autoexplicativo
+def truncar(valor, n):
+    """
+    Mantem n digitos (conforme o MODO_PRECISAO) CORTANDO o resto, sem arredondar
+
+    ex: truncar(Decimal("123.456"), 4) -> Decimal("123.4")
+    """
     return _reduzir(valor, n, ROUND_DOWN)
 
-def arredondar(valor, n): #autoexplicativo
+def arredondar(valor, n):
+    """
+    Mantem n digitos (conforme o MODO_PRECISAO) ARREDONDANDO (0.5 pra cima)
+
+    ex: arredondar(Decimal("123.456"), 4) -> Decimal("123.5")
+        arredondar(Decimal("0.76545"), 4) -> Decimal("0.7655")
+    """
     return _reduzir(valor, n, ROUND_HALF_UP)
 
 def ajustar_precisao(valor, n, metodo):
@@ -94,7 +123,15 @@ def ajustar_precisao(valor, n, metodo):
         return arredondar(valor, n)
     raise ValueError(f"Método inválido: {metodo!r}")
 
-def operar_exato(x, y, op): #autoexplicativo
+def operar_exato(x, y, op):
+    """
+    Faz a conta (+, -, *, /) com a precisao maxima (PRECISAO_MAXIMA = 50 digitos)
+    divisao por zero -> ZeroDivisionError
+    operacao invalida -> ValueError
+
+    ex: operar_exato(Decimal("0.76545"), Decimal("0.76541"), "-") -> Decimal("0.00004")
+    """
+    #match/case funciona como o switch do C, o "case _" eh o default
     match op:
         case "+":
             return x+y
