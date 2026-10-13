@@ -18,9 +18,14 @@ def ler_numero(mensagem):
     while True:
         entrada = input(mensagem).strip().replace(",", ".") # garante que mesmo se o usuario por espaços ou "," no lugar do ponto o programa funciona
         try:
-            return Decimal(entrada) #garante que a string vai ser convertida para decimal e trata o erro
+            valor = Decimal(entrada) #garante que a string vai ser convertida para decimal e trata o erro
         except InvalidOperation:
             print("Valor inválido. Tente novamente (ex: 0.76545 ou 0,76545).")
+            continue
+        if not valor.is_finite(): #recusa NaN e Infinity, que o Decimal aceita como texto
+            print("Valor inválido. Use apenas números (ex: 0.76545 ou 0,76545).")
+            continue
+        return valor
 
 
 def ler_operacao():
@@ -44,7 +49,7 @@ def ler_n():
 
 def ler_metodo(): #escolha do metodo
     while True:
-        escolha = input("Método: [1] - truncamento [2] - arredondamento]: ").strip()
+        escolha = input("Método: [1] - truncamento  [2] - arredondamento: ").strip()
         if escolha == "1":
             return "truncamento"
         if escolha == "2":
@@ -68,7 +73,7 @@ def mostrar_resultado(r): # "r" é o objeto Resultado que guarda as informaçõe
     if r.erro_rel is None:
         print("Erro relativo Er : indefinido (aproximado = 0)")
     else:
-        print(f"Erro relativo Er : {r.erro_rel}")
+        print(f"Erro relativo Er : {r.erro_rel:.6g}  ({r.erro_rel * 100:.4f}%)")
     print("=" * 60)
 
 def main():
